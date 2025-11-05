@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Review - Postfix Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Scratch-like block styles with actual puzzle-piece shapes */
+        .scratch-block {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            padding: 10px 16px;
+            margin: 0;
+            cursor: move;
+            user-select: none;
+            position: relative;
+            min-width: 200px;
+            max-width: 100%;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+            transition: all 0.2s ease;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        
+        .scratch-block:hover:not(.placed) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        
+        .scratch-block.dragging {
+            opacity: 0.7;
+            transform: rotate(3deg) scale(1.08);
+            z-index: 1000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        
+        .scratch-block.placed {
+            cursor: default;
+            margin: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        
+        /* Hat block (top connector) - rounded top, notch bottom */
+        .block-hat {
+            border-radius: 12px 12px 0 0;
+            border: 3px solid;
+            border-bottom: none;
+            padding-bottom: 14px;
+        }
+        .block-hat::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 10px;
+            background: inherit;
+            border-radius: 0 0 10px 10px;
+            border: 3px solid;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        
+        /* Stack block (connects top and bottom) */
+        .block-stack {
+            border-radius: 0;
+            border: 3px solid;
+            border-top: none;
+            border-bottom: none;
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
+        .block-stack::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 10px;
+            background: inherit;
+            border-radius: 10px 10px 0 0;
+            border: 3px solid;
+            border-bottom: none;
+            border-left: none;
+            border-right: none;
+        }
+        .block-stack::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 10px;
+            background: inherit;
+            border-radius: 0 0 10px 10px;
+            border: 3px solid;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        
+        /* Cap block (bottom connector) - notch top, rounded bottom */
+        .block-cap {
+            border-radius: 0 0 12px 12px;
+            border: 3px solid;
+            border-top: none;
+            padding-top: 14px;
+        }
+        .block-cap::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 10px;
+            background: inherit;
+            border-radius: 10px 10px 0 0;
+            border: 3px solid;
+            border-bottom: none;
+            border-left: none;
+            border-right: none;
+        }
+        
+        /* C-block (condition block with notch) */
+        .block-c {
+            border-radius: 12px 12px 0 0;
+            border: 3px solid;
+            border-bottom: none;
+            padding-bottom: 14px;
+        }
+        .block-c::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 10px;
+            background: inherit;
+            border-radius: 0 0 10px 10px;
+            border: 3px solid;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        
+        /* Color coding by block type - Scratch color scheme */
+        .block-class_def { 
+            background: linear-gradient(135deg, #FF6B6B 0%, #E55555 100%);
+            border-color: #B83535 !important;
+        }
+        .block-struct_def { 
+            background: linear-gradient(135deg, #4ECDC4 0%, #2EB5AB 100%);
+            border-color: #1E9B91 !important;
+        }
+        .block-function_def { 
+            background: linear-gradient(135deg, #FFD93D 0%, #F5C832 100%);
+            border-color: #D4A520 !important;
+            color: #2C3E50;
+        }
+        .block-member_var { 
+            background: linear-gradient(135deg, #95E1D3 0%, #6EC6B8 100%);
+            border-color: #4DB3A2 !important;
+            color: #2C3E50;
+        }
+        .block-constructor { 
+            background: linear-gradient(135deg, #F38181 0%, #E55D5D 100%);
+            border-color: #C74444 !important;
+        }
+        .block-condition { 
+            background: linear-gradient(135deg, #AA96DA 0%, #8B7BC8 100%);
+            border-color: #6B5BA8 !important;
+        }
+        .block-statement { 
+            background: linear-gradient(135deg, #6BCB77 0%, #4CAF50 100%);
+            border-color: #3D8B40 !important;
+        }
+        .block-return { 
+            background: linear-gradient(135deg, #FF6B9D 0%, #E55A8A 100%);
+            border-color: #C7446B !important;
+        }
+        
+        /* Workspace */
+        .workspace {
+            min-height: 500px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 3px dashed #adb5bd;
+            border-radius: 16px;
+            padding: 28px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .workspace.drag-over {
+            border-color: #4299e1;
+            background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+            border-style: solid;
+            box-shadow: inset 0 0 20px rgba(66, 153, 225, 0.2);
+        }
+        .workspace:empty::before {
+            content: 'Drag code blocks here to build your class';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #adb5bd;
+            font-size: 20px;
+            font-weight: 500;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        /* Block palette */
+        .block-palette {
+            max-height: 650px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 2px solid #e9ecef;
+        }
+        .block-palette::-webkit-scrollbar {
+            width: 10px;
+        }
+        .block-palette::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+        .block-palette::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #888 0%, #666 100%);
+            border-radius: 8px;
+        }
+        .block-palette::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #555 0%, #333 100%);
+        }
+        
+        /* Indentation - smooth visual hierarchy with connecting blocks */
+        .indent-0 { 
+            margin-left: 0; 
+        }
+        .indent-1 { 
+            margin-left: 32px; 
+            position: relative;
+        }
+        .indent-1::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
+            border-radius: 2px;
+        }
+        .indent-2 { 
+            margin-left: 64px; 
+            position: relative;
+        }
+        .indent-2::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 100%);
+            border-radius: 2px;
+        }
+        .indent-3 { 
+            margin-left: 96px; 
+            position: relative;
+        }
+        .indent-3::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.1) 100%);
+            border-radius: 2px;
+        }
+        
+        /* Make blocks connect visually in workspace - like puzzle pieces */
+        .workspace .scratch-block.placed {
+            margin-bottom: -3px; /* Connect blocks together tightly */
+            margin-top: 0;
+            display: block;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Ensure blocks align properly and form a continuous chain */
+        .workspace .scratch-block {
+            display: block;
+            width: fit-content;
+        }
+        
+        /* Visual spacing between logical groups for coherence */
+        .workspace .scratch-block.placed[data-group] {
+            position: relative;
+        }
+        
+        /* Ensure blocks within a function body are visually connected */
+        .workspace .scratch-block.placed:not(:last-child) {
+            margin-bottom: -3px;
+        }
+        
+        /* Add visual separator between different groups */
+        .workspace .scratch-block.placed[data-group]:not([data-group=""]) + .scratch-block.placed[data-group]:not([data-group=""]) {
+            margin-top: 0 !important;
+        }
+        
+        /* Remove button - cleaner design */
+        .remove-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 3px solid white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .remove-btn:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: scale(1.15) rotate(90deg);
+        }
+        
+        /* Code block container in workspace - better spacing */
+        .code-chain {
+            margin-bottom: 2px;
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition: background 0.2s, border-color 0.2s, transform 0.2s;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-cyan-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-blue-800 mb-2">📚 Exam Review</h1>
+            <p class="text-xl text-gray-700">Build code structures with Scratch-like blocks</p>
+            <a href="/" class="text-blue-600 hover:text-blue-800 underline mt-2 inline-block">← Back to Home</a>
+        </div>
+
+        <!-- Topic Selection -->
+        <div class="max-w-6xl mx-auto mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Choose a Topic</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button onclick="selectTopic('stack')" class="topic-btn p-6 rounded-lg border-2 border-blue-300 hover:border-blue-600 hover:bg-blue-50 transition-all text-center transform hover:scale-105">
+                        <div class="text-3xl mb-2">📚</div>
+                        <div class="font-bold text-lg">Stack Class</div>
+                        <div class="text-sm text-gray-600 mt-1">Linked List</div>
+                    </button>
+                    <button onclick="selectTopic('queue')" class="topic-btn p-6 rounded-lg border-2 border-green-300 hover:border-green-600 hover:bg-green-50 transition-all text-center transform hover:scale-105">
+                        <div class="text-3xl mb-2">🔄</div>
+                        <div class="font-bold text-lg">Queue Class</div>
+                        <div class="text-sm text-gray-600 mt-1">Linked List</div>
+                    </button>
+                    <button onclick="selectTopic('recursion')" class="topic-btn p-6 rounded-lg border-2 border-purple-300 hover:border-purple-600 hover:bg-purple-50 transition-all text-center transform hover:scale-105">
+                        <div class="text-3xl mb-2">🔄</div>
+                        <div class="font-bold text-lg">Recursion</div>
+                        <div class="text-sm text-gray-600 mt-1">Series Function</div>
+                    </button>
+                    <button onclick="selectTopic('binary_search')" class="topic-btn p-6 rounded-lg border-2 border-orange-300 hover:border-orange-600 hover:bg-orange-50 transition-all text-center transform hover:scale-105">
+                        <div class="text-3xl mb-2">🔍</div>
+                        <div class="font-bold text-lg">Binary Search</div>
+                        <div class="text-sm text-gray-600 mt-1">Recursive</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div id="workspace-container" class="max-w-7xl mx-auto hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+                <!-- Question -->
+                <div class="mb-6 pb-4 border-b-2 border-gray-200">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-3" id="question-title"></h2>
+                    <p class="text-lg text-gray-700" id="question-text"></p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left: Block Palette -->
+                    <div class="lg:col-span-1">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <span class="mr-2">🧩</span>
+                            Code Blocks
+                        </h3>
+                        <div id="block-palette" class="block-palette"></div>
+                    </div>
+
+                    <!-- Center: Workspace -->
+                    <div class="lg:col-span-2">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <span class="mr-2">📝</span>
+                            Your Code
+                        </h3>
+                        <div id="workspace" class="workspace"></div>
+                        
+                        <!-- Actions -->
+                        <div class="flex gap-4 justify-center mt-6">
+                            <button onclick="checkAnswer()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 shadow-lg">
+                                ✓ Check Answer
+                            </button>
+                            <button onclick="resetWorkspace()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 shadow-lg">
+                                ↻ Reset
+                            </button>
+                            <button onclick="showSolution()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 shadow-lg">
+                                👁️ Show Solution
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="hidden mt-6"></div>
+                
+                <!-- Hint -->
+                <div class="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                    <p class="text-sm text-blue-800">
+                        <strong>💡 Hint:</strong> <span id="hint-text"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+        let currentTopic = null;
+        let problemData = null;
+        let placedBlocks = [];
+        let draggedBlock = null;
+
+        async function selectTopic(topic) {
+            currentTopic = topic;
+            
+            try {
+                const response = await fetch('/api/get-scratch-problem', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+                
+                problemData = await response.json();
+                displayProblem();
+                document.getElementById('workspace-container').classList.remove('hidden');
+            } catch (error) {
+                alert('Error loading problem: ' + error.message);
+            }
+        }
+
+        function displayProblem() {
+            document.getElementById('question-title').textContent = getTopicName(currentTopic);
+            document.getElementById('question-text').textContent = problemData.question;
+            document.getElementById('hint-text').textContent = problemData.hint;
+            
+            // Display blocks in palette
+            const palette = document.getElementById('block-palette');
+            palette.innerHTML = '';
+            
+            problemData.blocks.forEach(block => {
+                const blockEl = createBlockElement(block, false);
+                palette.appendChild(blockEl);
+            });
+            
+            // Clear workspace
+            const workspace = document.getElementById('workspace');
+            workspace.innerHTML = '';
+            placedBlocks = [];
+        }
+
+        function createBlockElement(block, isPlaced) {
+            const blockEl = document.createElement('div');
+            const shapeClass = getBlockShapeClass(block.shape);
+            const typeClass = `block-${block.type}`;
+            const indentClass = isPlaced ? `indent-${block.indent}` : '';
+            const groupClass = block.group ? `group-${block.group}` : '';
+            
+            blockEl.className = `scratch-block ${shapeClass} ${typeClass} ${isPlaced ? 'placed ' + indentClass : ''} ${groupClass}`.trim();
+            blockEl.textContent = block.text;
+            blockEl.dataset.id = block.id;
+            blockEl.dataset.type = block.type;
+            blockEl.dataset.shape = block.shape;
+            blockEl.dataset.indent = block.indent;
+            if (block.group) {
+                blockEl.dataset.group = block.group;
+                blockEl.dataset.orderInGroup = block.order_in_group;
+            }
+            
+            if (!isPlaced) {
+                blockEl.draggable = true;
+                blockEl.addEventListener('dragstart', handleDragStart);
+                blockEl.addEventListener('dragend', handleDragEnd);
+            } else {
+                // Add remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '×';
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    blockEl.remove();
+                    placedBlocks = placedBlocks.filter(b => b.id !== block.id);
+                    // Return block to palette
+                    const originalBlock = problemData.blocks.find(b => b.id === block.id);
+                    if (originalBlock) {
+                        const paletteBlock = createBlockElement(originalBlock, false);
+                        document.getElementById('block-palette').appendChild(paletteBlock);
+                    }
+                };
+                blockEl.appendChild(removeBtn);
+            }
+            
+            return blockEl;
+        }
+
+        function getBlockShapeClass(shape) {
+            switch(shape) {
+                case 'hat': return 'block-hat';
+                case 'stack': return 'block-stack';
+                case 'cap': return 'block-cap';
+                case 'c': return 'block-c';
+                default: return 'block-stack';
+            }
+        }
+
+        function handleDragStart(e) {
+            draggedBlock = {
+                id: e.target.dataset.id,
+                type: e.target.dataset.type,
+                shape: e.target.dataset.shape,
+                indent: parseInt(e.target.dataset.indent),
+                text: e.target.textContent.replace('×', '').trim()
+            };
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        const workspace = document.getElementById('workspace');
+        
+        workspace.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            workspace.classList.add('drag-over');
+        });
+
+        workspace.addEventListener('dragleave', () => {
+            workspace.classList.remove('drag-over');
+        });
+
+        workspace.addEventListener('drop', (e) => {
+            e.preventDefault();
+            workspace.classList.remove('drag-over');
+            
+            if (draggedBlock) {
+                // Find the block data
+                const blockData = problemData.blocks.find(b => b.id === draggedBlock.id);
+                if (!blockData) return;
+                
+                // Check if already placed
+                if (placedBlocks.find(b => b.id === draggedBlock.id)) return;
+                
+                // Create placed block
+                const placedEl = createBlockElement(blockData, true);
+                workspace.appendChild(placedEl);
+                
+                // Remove from palette
+                const paletteBlock = document.querySelector(`[data-id="${draggedBlock.id}"]:not(.placed)`);
+                if (paletteBlock) paletteBlock.remove();
+                
+                // Add to placed blocks
+                placedBlocks.push(blockData);
+                
+                // Sort blocks by their position in correct order for visual coherence
+                sortWorkspaceBlocks();
+                
+                draggedBlock = null;
+            }
+        });
+        
+        function sortWorkspaceBlocks() {
+            // Reorder blocks in workspace to match logical order
+            const workspace = document.getElementById('workspace');
+            const blocks = Array.from(workspace.children);
+            
+            // Sort by position in correct_order - this ensures blocks are in coherent structure
+            blocks.sort((a, b) => {
+                const aId = a.dataset.id;
+                const bId = b.dataset.id;
+                const aIndex = problemData.correct_order.indexOf(aId);
+                const bIndex = problemData.correct_order.indexOf(bId);
+                // If not found in correct_order, put at end
+                if (aIndex === -1) return 1;
+                if (bIndex === -1) return -1;
+                return aIndex - bIndex;
+            });
+            
+            // Re-append in sorted order
+            blocks.forEach(block => workspace.appendChild(block));
+            
+            // Update visual grouping
+            updateBlockGroups();
+        }
+        
+        function updateBlockGroups() {
+            // Add visual spacing between logical groups for better coherence
+            const workspace = document.getElementById('workspace');
+            const blocks = Array.from(workspace.children);
+            let lastGroup = null;
+            
+            blocks.forEach((block, index) => {
+                const groupId = block.dataset.group;
+                
+                // Add spacing between different groups (but not within the same group)
+                if (groupId && lastGroup && groupId !== lastGroup && index > 0) {
+                    // Add spacing before this block to separate groups
+                    block.style.marginTop = '8px';
+                    block.style.borderTop = '2px solid rgba(255, 255, 255, 0.2)';
+                    block.style.paddingTop = '4px';
+                } else {
+                    block.style.marginTop = '';
+                    block.style.borderTop = '';
+                    block.style.paddingTop = '';
+                }
+                
+                lastGroup = groupId;
+            });
+        }
+
+        function checkAnswer() {
+            const userOrder = placedBlocks.map(b => b.id);
+            const correctOrder = problemData.correct_order;
+            const isCorrect = JSON.stringify(userOrder) === JSON.stringify(correctOrder);
+            
+            const feedback = document.getElementById('feedback');
+            feedback.classList.remove('hidden');
+            
+            if (isCorrect) {
+                feedback.className = 'bg-green-100 border-l-4 border-green-500 p-6 rounded-lg';
+                feedback.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">✅</span>
+                        <div>
+                            <p class="font-bold text-green-800 text-xl">Perfect! Your code structure is correct!</p>
+                            <p class="text-green-700 mt-1">You've successfully built the class definition with proper structure and order.</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                feedback.className = 'bg-red-100 border-l-4 border-red-500 p-6 rounded-lg';
+                feedback.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">❌</span>
+                        <div>
+                            <p class="font-bold text-red-800 text-xl">Not quite right</p>
+                            <p class="text-red-700 mt-1">Check the order and indentation of your blocks. Remember: class definition → private members → public methods → closing brace.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function resetWorkspace() {
+            workspace.innerHTML = '';
+            placedBlocks = [];
+            document.getElementById('feedback').classList.add('hidden');
+            displayProblem();
+        }
+
+        function showSolution() {
+            workspace.innerHTML = '';
+            placedBlocks = [];
+            
+            // Add blocks in correct order
+            problemData.correct_order.forEach(blockId => {
+                const blockData = problemData.blocks.find(b => b.id === blockId);
+                if (blockData) {
+                    const blockEl = createBlockElement(blockData, true);
+                    workspace.appendChild(blockEl);
+                    placedBlocks.push(blockData);
+                }
+            });
+        }
+
+        function getTopicName(topic) {
+            const names = {
+                'stack': 'Stack Linked List Class',
+                'queue': 'Queue Linked List Class',
+                'recursion': 'Recursive Function',
+                'binary_search': 'Binary Search Function'
+            };
+            return names[topic] || topic;
+        }
+    </script>
+</body>
+</html>

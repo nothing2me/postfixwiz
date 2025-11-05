@@ -4,6 +4,7 @@ import json
 from utils.postfix import evaluate_postfix, is_valid_postfix
 from utils.infix_to_postfix import infix_to_postfix, get_conversion_steps
 from utils.problems import generate_problem, ProblemType
+from utils.scratch_blocks import generate_scratch_problem
 
 app = Flask(__name__)
 app.secret_key = 'postfix_trainer_secret_key_2024'
@@ -27,6 +28,11 @@ def practice():
 def results():
     """Results page showing progress"""
     return render_template('results.html')
+
+@app.route('/exam-review')
+def exam_review():
+    """Exam review mode - topic-specific study games"""
+    return render_template('exam_review.html')
 
 # API Routes
 @app.route('/api/generate-problem', methods=['POST'])
@@ -148,6 +154,84 @@ def api_reset_stats():
     session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
     session.modified = True
     return jsonify({'success': True})
+
+@app.route('/api/generate-exam-problem', methods=['POST'])
+def api_generate_exam_problem():
+    """Generate an exam review problem"""
+    data = request.json
+    topic = data.get('topic', 'stacks')
+    mode = data.get('mode', 'drag_drop')
+    
+    problem = generate_exam_problem(topic, mode)
+    return jsonify(problem)
+
+@app.route('/api/get-scratch-problem', methods=['POST'])
+def api_get_scratch_problem():
+    """Get Scratch-like problem with code blocks"""
+    data = request.json
+    topic = data.get('topic', 'stack')
+    
+    result = generate_scratch_problem(topic)
+    return jsonify(result)
+
+@app.route('/api/get-typing-problem', methods=['POST'])
+def api_get_typing_problem():
+    """Get typing problem"""
+    data = request.json
+    topic = data.get('topic', 'stack')
+    
+    problem = generate_typing_problem(topic)
+    return jsonify(problem)
+
+@app.route('/api/check-typing-code', methods=['POST'])
+def api_check_typing_code():
+    """Check typed code for accuracy"""
+    data = request.json
+    user_code = data.get('user_code', '').strip()
+    correct_code = data.get('correct_code', '').strip()
+    topic = data.get('topic', 'stack')
+    
+    # Normalize code for comparison (remove whitespace differences)
+    user_normalized = normalize_code(user_code)
+    correct_normalized = normalize_code(correct_code)
+    
+    # Check if code matches
+    is_correct = user_normalized == correct_normalized
+    
+    # Update session stats
+    if 'stats' not in session:
+        session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+    
+    session['stats']['total'] += 1
+    if is_correct:
+        session['stats']['correct'] += 1
+        session['stats']['streak'] += 1
+        if session['stats']['streak'] > session['stats']['max_streak']:
+            session['stats']['max_streak'] = session['stats']['streak']
+    else:
+        session['stats']['streak'] = 0
+    
+    session.modified = True
+    
+    return jsonify({
+        'correct': is_correct,
+        'message': 'Code matches!' if is_correct else 'Code does not match. Check syntax and logic.',
+        'stats': session['stats']
+    })
+
+def normalize_code(code):
+    """Normalize code for comparison by removing extra whitespace and normalizing"""
+    # Remove all whitespace
+    code = ''.join(code.split())
+    # Normalize case
+    code = code.lower()
+    # Remove common formatting differences
+    code = code.replace(';', '')
+    code = code.replace('{', '')
+    code = code.replace('}', '')
+    code = code.replace('(', '')
+    code = code.replace(')', '')
+    return code
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
