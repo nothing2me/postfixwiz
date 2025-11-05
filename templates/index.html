@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Postfix Trainer - Learn Reverse Polish Notation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-16">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-bold text-indigo-800 mb-4">🎮 Postfix Trainer</h1>
+            <p class="text-2xl text-gray-700">Master Reverse Polish Notation</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8 md:p-12">
+            <!-- Introduction -->
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-indigo-800 mb-4">What is Postfix Notation?</h2>
+                <p class="text-lg text-gray-700 mb-4">
+                    Postfix notation (also called Reverse Polish Notation or RPN) is a mathematical notation where operators 
+                    follow their operands. Instead of writing <code class="bg-gray-100 px-2 py-1 rounded">3 + 4</code>, 
+                    you write <code class="bg-gray-100 px-2 py-1 rounded">3 4 +</code>.
+                </p>
+            </div>
+
+            <!-- Visual Example -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold text-indigo-800 mb-4">Example: Converting Infix to Postfix</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between bg-white p-4 rounded-lg shadow">
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">Infix Expression:</p>
+                            <p class="text-2xl font-mono font-bold text-indigo-600">a + b * c</p>
+                        </div>
+                        <div class="text-3xl text-gray-400">→</div>
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">Postfix Expression:</p>
+                            <p class="text-2xl font-mono font-bold text-purple-600">a b c * +</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <p class="text-sm text-gray-600 mb-2">How it works:</p>
+                        <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                            <li>Operands go directly to output: <code class="bg-gray-100 px-1 rounded">a</code>, <code class="bg-gray-100 px-1 rounded">b</code>, <code class="bg-gray-100 px-1 rounded">c</code></li>
+                            <li>Operators are pushed to a stack based on precedence</li>
+                            <li>Higher precedence operators (<code class="bg-gray-100 px-1 rounded">*</code>) are processed before lower precedence ones (<code class="bg-gray-100 px-1 rounded">+</code>)</li>
+                            <li>Result: <code class="bg-gray-100 px-1 rounded">a b c * +</code> (multiply first, then add)</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluation Example -->
+            <div class="bg-gradient-to-r from-green-50 to-teal-50 rounded-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold text-green-800 mb-4">Example: Evaluating Postfix</h3>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-sm text-gray-600 mb-2">Postfix Expression: <code class="bg-gray-100 px-2 py-1 rounded font-mono">3 4 + 5 *</code></p>
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center font-bold">1</span>
+                            <span>Push <code class="bg-gray-100 px-1 rounded">3</code> → Stack: [3]</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center font-bold">2</span>
+                            <span>Push <code class="bg-gray-100 px-1 rounded">4</code> → Stack: [3, 4]</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center font-bold">3</span>
+                            <span>See <code class="bg-gray-100 px-1 rounded">+</code> → Pop 4, Pop 3 → 3 + 4 = 7 → Stack: [7]</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center font-bold">4</span>
+                            <span>Push <code class="bg-gray-100 px-1 rounded">5</code> → Stack: [7, 5]</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-sm">
+                            <span class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center font-bold">5</span>
+                            <span>See <code class="bg-gray-100 px-1 rounded">*</code> → Pop 5, Pop 7 → 7 * 5 = 35 → Stack: [35]</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t">
+                            <p class="font-bold text-green-800">Result: <code class="bg-green-100 px-2 py-1 rounded font-mono text-lg">35</code></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/learn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg">
+                    📚 Start Learning
+                </a>
+                <a href="/practice" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg">
+                    🎯 Practice Mode
+                </a>
+                <a href="/results" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg">
+                    📊 View Progress
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-600">
+            <p>Learn postfix notation step by step with interactive exercises!</p>
+        </div>
+    </div>
+</body>
+</html>
+

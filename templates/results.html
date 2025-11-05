@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results & Progress - Postfix Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gradient-to-br from-green-50 to-teal-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-green-800 mb-2">📊 Your Progress</h1>
+            <p class="text-xl text-gray-700">Track your learning journey</p>
+            <a href="/" class="text-green-600 hover:text-green-800 underline mt-2 inline-block">← Back to Home</a>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="max-w-5xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Accuracy Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Accuracy</h2>
+                        <span class="text-4xl">🎯</span>
+                    </div>
+                    <div class="relative">
+                        <div class="w-full bg-gray-200 rounded-full h-8 mb-2">
+                            <div id="accuracy-bar" class="bg-gradient-to-r from-green-500 to-green-600 h-8 rounded-full flex items-center justify-center transition-all duration-500" style="width: 0%">
+                                <span id="accuracy-text" class="text-white font-bold">0%</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Percentage of correct answers</p>
+                    </div>
+                </div>
+
+                <!-- Streak Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Current Streak</h2>
+                        <span class="text-4xl">🔥</span>
+                    </div>
+                    <p class="text-5xl font-bold text-orange-600 mb-2" id="current-streak">0</p>
+                    <p class="text-sm text-gray-600">Consecutive correct answers</p>
+                </div>
+
+                <!-- Total Correct Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Total Correct</h2>
+                        <span class="text-4xl">✅</span>
+                    </div>
+                    <p class="text-5xl font-bold text-green-600 mb-2" id="total-correct">0</p>
+                    <p class="text-sm text-gray-600">Problems solved correctly</p>
+                </div>
+
+                <!-- Max Streak Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Best Streak</h2>
+                        <span class="text-4xl">⭐</span>
+                    </div>
+                    <p class="text-5xl font-bold text-purple-600 mb-2" id="max-streak">0</p>
+                    <p class="text-sm text-gray-600">Your longest streak</p>
+                </div>
+            </div>
+
+            <!-- Detailed Stats -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Detailed Statistics</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">Total Problems</p>
+                        <p class="text-3xl font-bold text-gray-800" id="total-problems">0</p>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">Correct</p>
+                        <p class="text-3xl font-bold text-green-600" id="correct-count">0</p>
+                    </div>
+                    <div class="text-center p-4 bg-red-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">Incorrect</p>
+                        <p class="text-3xl font-bold text-red-600" id="incorrect-count">0</p>
+                    </div>
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">Success Rate</p>
+                        <p class="text-3xl font-bold text-blue-600" id="success-rate">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Level Indicator -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 mb-8 text-white">
+                <h2 class="text-2xl font-bold mb-4">Your Level</h2>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-4xl font-bold mb-2" id="level-name">Beginner</p>
+                        <p class="text-indigo-100" id="level-description">Keep practicing to level up!</p>
+                    </div>
+                    <div class="text-6xl" id="level-emoji">🌱</div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-indigo-400 rounded-full h-4">
+                        <div id="level-progress" class="bg-white h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm mt-2 text-indigo-100">Progress to next level</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/practice" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg text-center">
+                    🎯 Keep Practicing
+                </a>
+                <button 
+                    onclick="resetStats()"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg"
+                >
+                    🔄 Reset Stats
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/get-stats');
+                const data = await response.json();
+                
+                const stats = data.stats;
+                const accuracy = data.accuracy;
+                
+                // Update accuracy
+                document.getElementById('accuracy-text').textContent = accuracy + '%';
+                document.getElementById('accuracy-bar').style.width = accuracy + '%';
+                
+                // Update counts
+                document.getElementById('total-correct').textContent = stats.correct;
+                document.getElementById('current-streak').textContent = stats.streak;
+                document.getElementById('max-streak').textContent = stats.max_streak;
+                document.getElementById('total-problems').textContent = stats.total;
+                document.getElementById('correct-count').textContent = stats.correct;
+                document.getElementById('incorrect-count').textContent = stats.total - stats.correct;
+                document.getElementById('success-rate').textContent = accuracy + '%';
+                
+                // Calculate level
+                const level = calculateLevel(stats.total, accuracy);
+                document.getElementById('level-name').textContent = level.name;
+                document.getElementById('level-emoji').textContent = level.emoji;
+                document.getElementById('level-description').textContent = level.description;
+                document.getElementById('level-progress').style.width = level.progress + '%';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function calculateLevel(total, accuracy) {
+            if (total === 0) {
+                return {
+                    name: 'Beginner',
+                    emoji: '🌱',
+                    description: 'Start practicing to begin your journey!',
+                    progress: 0
+                };
+            }
+            
+            const score = total * (accuracy / 100);
+            
+            if (score < 10) {
+                return {
+                    name: 'Beginner',
+                    emoji: '🌱',
+                    description: 'Learning the basics!',
+                    progress: Math.min(100, (score / 10) * 100)
+                };
+            } else if (score < 30) {
+                return {
+                    name: 'Intermediate',
+                    emoji: '📚',
+                    description: 'You\'re getting good!',
+                    progress: Math.min(100, ((score - 10) / 20) * 100)
+                };
+            } else if (score < 60) {
+                return {
+                    name: 'Advanced',
+                    emoji: '🎓',
+                    description: 'Excellent progress!',
+                    progress: Math.min(100, ((score - 30) / 30) * 100)
+                };
+            } else if (score < 100) {
+                return {
+                    name: 'Expert',
+                    emoji: '🏆',
+                    description: 'You\'re a master!',
+                    progress: Math.min(100, ((score - 60) / 40) * 100)
+                };
+            } else {
+                return {
+                    name: 'Grand Master',
+                    emoji: '👑',
+                    description: 'The ultimate postfix master!',
+                    progress: 100
+                };
+            }
+        }
+
+        async function resetStats() {
+            if (!confirm('Are you sure you want to reset all your statistics? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reset-stats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadStats();
+                }
+            } catch (error) {
+                alert('Error resetting stats: ' + error.message);
+            }
+        }
+
+        // Load stats on page load
+        loadStats();
+    </script>
+</body>
+</html>
+

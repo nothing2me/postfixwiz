@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Mode - Postfix Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-pink-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-purple-800 mb-2">🎯 Practice Mode</h1>
+            <p class="text-xl text-gray-700">Test your skills with random problems</p>
+            <a href="/" class="text-purple-600 hover:text-purple-800 underline mt-2 inline-block">← Back to Home</a>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="max-w-4xl mx-auto mb-6">
+            <div class="bg-white rounded-lg shadow-lg p-4 flex justify-around items-center">
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">Accuracy</p>
+                    <p class="text-2xl font-bold text-indigo-600" id="accuracy">0%</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">Correct</p>
+                    <p class="text-2xl font-bold text-green-600" id="correct">0</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">Total</p>
+                    <p class="text-2xl font-bold text-gray-600" id="total">0</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">Streak</p>
+                    <p class="text-2xl font-bold text-orange-600" id="streak">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+            <!-- Controls -->
+            <div class="mb-6 flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex gap-2">
+                    <label class="text-gray-700 font-semibold">Difficulty:</label>
+                    <select id="difficulty" class="border-2 border-purple-300 rounded px-3 py-1">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <label class="text-gray-700 font-semibold">Type:</label>
+                    <select id="problem-type" class="border-2 border-purple-300 rounded px-3 py-1">
+                        <option value="both">Both</option>
+                        <option value="convert">Convert</option>
+                        <option value="evaluate">Evaluate</option>
+                    </select>
+                </div>
+                <button 
+                    onclick="generateProblem()"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-all"
+                >
+                    New Problem
+                </button>
+            </div>
+
+            <!-- Problem Display -->
+            <div id="problem-container" class="hidden">
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 mb-6">
+                    <p class="text-lg font-semibold text-gray-700 mb-4" id="question-text"></p>
+                    <div class="bg-white rounded-lg p-4 shadow-inner">
+                        <p class="text-3xl font-mono font-bold text-purple-800 text-center" id="expression-display"></p>
+                    </div>
+                </div>
+
+                <!-- Answer Input -->
+                <div class="mb-6">
+                    <label for="answer-input" class="block text-lg font-semibold text-gray-700 mb-2">
+                        Your Answer:
+                    </label>
+                    <input 
+                        type="text" 
+                        id="answer-input" 
+                        placeholder="Enter your answer..."
+                        class="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg font-mono"
+                        onkeypress="if(event.key === 'Enter') checkAnswer()"
+                    >
+                    <button 
+                        onclick="checkAnswer()"
+                        class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+                    >
+                        Check Answer
+                    </button>
+                </div>
+
+                <!-- Hint -->
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-6">
+                    <p class="text-sm text-yellow-800">
+                        <strong>💡 Hint:</strong> <span id="hint-text"></span>
+                    </p>
+                </div>
+
+                <!-- Feedback -->
+                <div id="feedback" class="hidden"></div>
+            </div>
+
+            <!-- Start Message -->
+            <div id="start-message" class="text-center py-12">
+                <p class="text-xl text-gray-600 mb-4">Ready to practice?</p>
+                <button 
+                    onclick="generateProblem()"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105"
+                >
+                    Generate First Problem
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+        let currentProblem = null;
+
+        async function generateProblem() {
+            const difficulty = document.getElementById('difficulty').value;
+            const problemType = document.getElementById('problem-type').value;
+
+            try {
+                const response = await fetch('/api/generate-problem', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ difficulty, type: problemType })
+                });
+
+                const problem = await response.json();
+                currentProblem = problem;
+                displayProblem(problem);
+                document.getElementById('start-message').classList.add('hidden');
+                document.getElementById('problem-container').classList.remove('hidden');
+                document.getElementById('answer-input').value = '';
+                document.getElementById('feedback').classList.add('hidden');
+                document.getElementById('answer-input').focus();
+            } catch (error) {
+                alert('Error generating problem: ' + error.message);
+            }
+
+            updateStats();
+        }
+
+        function displayProblem(problem) {
+            document.getElementById('question-text').textContent = problem.question;
+            document.getElementById('expression-display').textContent = problem.expression;
+            document.getElementById('hint-text').textContent = problem.hint;
+        }
+
+        async function checkAnswer() {
+            if (!currentProblem) return;
+
+            const userAnswer = document.getElementById('answer-input').value.trim();
+            if (!userAnswer) {
+                alert('Please enter an answer');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/check-answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        problem_type: currentProblem.type,
+                        answer: userAnswer,
+                        correct_answer: currentProblem.correct_answer,
+                        original_expression: currentProblem.expression
+                    })
+                });
+
+                const result = await response.json();
+                showFeedback(result);
+                updateStats();
+            } catch (error) {
+                alert('Error checking answer: ' + error.message);
+            }
+        }
+
+        function showFeedback(result) {
+            const feedbackDiv = document.getElementById('feedback');
+            feedbackDiv.classList.remove('hidden');
+
+            if (result.correct) {
+                feedbackDiv.className = 'bg-green-100 border-l-4 border-green-500 p-4 rounded mb-4';
+                feedbackDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">✅</span>
+                        <div>
+                            <p class="font-bold text-green-800">Correct!</p>
+                            <p class="text-sm text-green-700">Great job! Your answer is right.</p>
+                        </div>
+                    </div>
+                    <button 
+                        onclick="generateProblem()"
+                        class="mt-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-all"
+                    >
+                        Next Problem →
+                    </button>
+                `;
+            } else {
+                feedbackDiv.className = 'bg-red-100 border-l-4 border-red-500 p-4 rounded mb-4';
+                feedbackDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">❌</span>
+                        <div>
+                            <p class="font-bold text-red-800">Incorrect</p>
+                            <p class="text-sm text-red-700">Correct answer: <code class="bg-red-200 px-2 py-1 rounded font-mono">${result.correct_answer}</code></p>
+                        </div>
+                    </div>
+                    <button 
+                        onclick="generateProblem()"
+                        class="mt-3 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-all"
+                    >
+                        Try Another Problem →
+                    </button>
+                `;
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/get-stats');
+                const data = await response.json();
+                
+                document.getElementById('accuracy').textContent = data.accuracy + '%';
+                document.getElementById('correct').textContent = data.stats.correct;
+                document.getElementById('total').textContent = data.stats.total;
+                document.getElementById('streak').textContent = data.stats.streak;
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        // Load stats on page load
+        updateStats();
+    </script>
+</body>
+</html>
+
