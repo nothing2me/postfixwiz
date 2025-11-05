@@ -58,6 +58,25 @@
                         <option value="evaluate">Evaluate</option>
                     </select>
                 </div>
+                <div class="flex gap-2 items-center">
+                    <label class="text-gray-700 font-semibold">Format:</label>
+                    <div class="flex gap-2 bg-gray-100 rounded-lg p-1">
+                        <button 
+                            id="format-numbers"
+                            onclick="setFormat('numbers')"
+                            class="px-3 py-1 rounded transition-all bg-purple-600 text-white"
+                        >
+                            Numbers
+                        </button>
+                        <button 
+                            id="format-variables"
+                            onclick="setFormat('variables')"
+                            class="px-3 py-1 rounded transition-all bg-gray-200 text-gray-700"
+                        >
+                            Variables
+                        </button>
+                    </div>
+                </div>
                 <button 
                     onclick="generateProblem()"
                     class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-all"
@@ -122,10 +141,45 @@
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
     <script>
         let currentProblem = null;
+        let currentFormat = 'numbers'; // 'numbers' or 'variables'
+
+        function setFormat(format) {
+            currentFormat = format;
+            
+            // Update button styles
+            const numbersBtn = document.getElementById('format-numbers');
+            const variablesBtn = document.getElementById('format-variables');
+            
+            if (format === 'numbers') {
+                numbersBtn.classList.add('bg-purple-600', 'text-white');
+                numbersBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                variablesBtn.classList.remove('bg-purple-600', 'text-white');
+                variablesBtn.classList.add('bg-gray-200', 'text-gray-700');
+            } else {
+                variablesBtn.classList.add('bg-purple-600', 'text-white');
+                variablesBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                numbersBtn.classList.remove('bg-purple-600', 'text-white');
+                numbersBtn.classList.add('bg-gray-200', 'text-gray-700');
+            }
+            
+            // If evaluate type is selected, warn that variables won't work
+            const problemType = document.getElementById('problem-type').value;
+            if (format === 'variables' && problemType === 'evaluate') {
+                // Auto-switch to convert if evaluate is selected
+                document.getElementById('problem-type').value = 'convert';
+            }
+        }
 
         async function generateProblem() {
             const difficulty = document.getElementById('difficulty').value;
             const problemType = document.getElementById('problem-type').value;
+            const use_variables = currentFormat === 'variables';
+
+            // If evaluate type is selected, force numbers
+            if (problemType === 'evaluate') {
+                currentFormat = 'numbers';
+                setFormat('numbers');
+            }
 
             try {
                 const response = await fetch('/api/generate-problem', {
@@ -133,7 +187,11 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ difficulty, type: problemType })
+                    body: JSON.stringify({ 
+                        difficulty, 
+                        type: problemType,
+                        use_variables: use_variables && problemType !== 'evaluate'
+                    })
                 });
 
                 const problem = await response.json();
@@ -242,6 +300,13 @@
                 console.error('Error fetching stats:', error);
             }
         }
+
+        // Handle problem type changes - disable variables for evaluate
+        document.getElementById('problem-type').addEventListener('change', function() {
+            if (this.value === 'evaluate' && currentFormat === 'variables') {
+                setFormat('numbers');
+            }
+        });
 
         // Load stats on page load
         updateStats();

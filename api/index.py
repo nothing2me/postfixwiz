@@ -44,8 +44,9 @@ def api_generate_problem():
     data = request.json
     difficulty = data.get('difficulty', 'easy')
     problem_type = data.get('type', 'both')
+    use_variables = data.get('use_variables', False)
     
-    problem = generate_problem(difficulty, problem_type)
+    problem = generate_problem(difficulty, problem_type, use_variables)
     return jsonify(problem)
 
 @app.route('/api/check-answer', methods=['POST'])

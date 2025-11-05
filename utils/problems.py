@@ -10,67 +10,106 @@ class ProblemType(Enum):
     CONVERT = "convert"
     BOTH = "both"
 
-def generate_simple_infix():
+def generate_simple_infix(use_variables=False):
     """Generate a simple infix expression (easy difficulty)"""
     operators = ['+', '-', '*']
-    operands = list(range(1, 10))
     
-    num_operands = random.randint(2, 3)
-    ops = random.sample(operators, num_operands - 1)
-    nums = random.sample(operands, num_operands)
-    
-    expr = str(nums[0])
-    for i in range(num_operands - 1):
-        expr += f" {ops[i]} {nums[i+1]}"
+    if use_variables:
+        # Use letters a-z
+        available_vars = list('abcdefghijklmnopqrstuvwxyz')
+        num_operands = random.randint(2, 3)
+        vars_needed = random.sample(available_vars, num_operands)
+        ops = random.sample(operators, num_operands - 1)
+        
+        expr = vars_needed[0]
+        for i in range(num_operands - 1):
+            expr += f" {ops[i]} {vars_needed[i+1]}"
+    else:
+        # Use numbers
+        operands = list(range(1, 10))
+        num_operands = random.randint(2, 3)
+        ops = random.sample(operators, num_operands - 1)
+        nums = random.sample(operands, num_operands)
+        
+        expr = str(nums[0])
+        for i in range(num_operands - 1):
+            expr += f" {ops[i]} {nums[i+1]}"
     
     return expr
 
-def generate_medium_infix():
+def generate_medium_infix(use_variables=False):
     """Generate a medium complexity infix expression"""
     operators = ['+', '-', '*', '/']
-    operands = list(range(1, 20))
     
-    num_operands = random.randint(3, 4)
-    ops = random.sample(operators, num_operands - 1)
-    nums = random.sample(operands, num_operands)
-    
-    expr = str(nums[0])
-    for i in range(num_operands - 1):
-        expr += f" {ops[i]} {nums[i+1]}"
+    if use_variables:
+        available_vars = list('abcdefghijklmnopqrstuvwxyz')
+        num_operands = random.randint(3, 4)
+        vars_needed = random.sample(available_vars, num_operands)
+        ops = random.sample(operators, num_operands - 1)
+        
+        expr = vars_needed[0]
+        for i in range(num_operands - 1):
+            expr += f" {ops[i]} {vars_needed[i+1]}"
+    else:
+        operands = list(range(1, 20))
+        num_operands = random.randint(3, 4)
+        ops = random.sample(operators, num_operands - 1)
+        nums = random.sample(operands, num_operands)
+        
+        expr = str(nums[0])
+        for i in range(num_operands - 1):
+            expr += f" {ops[i]} {nums[i+1]}"
     
     return expr
 
-def generate_hard_infix():
+def generate_hard_infix(use_variables=False):
     """Generate a hard complexity infix expression with parentheses"""
     operators = ['+', '-', '*', '/', '^']
-    operands = list(range(1, 30))
     
-    num_operands = random.randint(4, 5)
-    ops = random.sample(operators, num_operands - 1)
-    nums = random.sample(operands, num_operands)
-    
-    # Build expression with optional parentheses
-    expr_parts = [str(nums[0])]
-    i = 0
-    
-    while i < num_operands - 1:
-        if random.random() < 0.3 and i < num_operands - 2:  # 30% chance to add paren
-            expr_parts.append(f"({nums[i+1]} {ops[i]} {nums[i+2]})")
-            i += 2  # Skip next iteration
-        else:
-            expr_parts.append(f"{ops[i]} {nums[i+1]}")
-            i += 1
+    if use_variables:
+        available_vars = list('abcdefghijklmnopqrstuvwxyz')
+        num_operands = random.randint(4, 5)
+        vars_needed = random.sample(available_vars, num_operands)
+        ops = random.sample(operators, num_operands - 1)
+        
+        expr_parts = [vars_needed[0]]
+        i = 0
+        
+        while i < num_operands - 1:
+            if random.random() < 0.3 and i < num_operands - 2:  # 30% chance to add paren
+                expr_parts.append(f"({vars_needed[i+1]} {ops[i]} {vars_needed[i+2]})")
+                i += 2  # Skip next iteration
+            else:
+                expr_parts.append(f"{ops[i]} {vars_needed[i+1]}")
+                i += 1
+    else:
+        operands = list(range(1, 30))
+        num_operands = random.randint(4, 5)
+        ops = random.sample(operators, num_operands - 1)
+        nums = random.sample(operands, num_operands)
+        
+        expr_parts = [str(nums[0])]
+        i = 0
+        
+        while i < num_operands - 1:
+            if random.random() < 0.3 and i < num_operands - 2:  # 30% chance to add paren
+                expr_parts.append(f"({nums[i+1]} {ops[i]} {nums[i+2]})")
+                i += 2  # Skip next iteration
+            else:
+                expr_parts.append(f"{ops[i]} {nums[i+1]}")
+                i += 1
     
     expr = ' '.join(expr_parts)
     return expr
 
-def generate_problem(difficulty='easy', problem_type='both'):
+def generate_problem(difficulty='easy', problem_type='both', use_variables=False):
     """
     Generate a random problem for practice mode.
     
     Args:
         difficulty: 'easy', 'medium', or 'hard'
         problem_type: 'evaluate', 'convert', or 'both'
+        use_variables: If True, use letters (a, b, c, ...) instead of numbers
     
     Returns:
         Dictionary with problem data
@@ -78,28 +117,37 @@ def generate_problem(difficulty='easy', problem_type='both'):
     from utils.infix_to_postfix import infix_to_postfix
     from utils.postfix import evaluate_postfix
     
-    # Generate infix expression based on difficulty
-    if difficulty == 'easy':
-        infix_expr = generate_simple_infix()
-    elif difficulty == 'medium':
-        infix_expr = generate_medium_infix()
-    else:  # hard
-        infix_expr = generate_hard_infix()
-    
     # Determine actual problem type
     if problem_type == 'both':
         actual_type = random.choice(['evaluate', 'convert'])
     else:
         actual_type = problem_type
     
+    # If evaluate type, force use_variables to False (can't evaluate variables)
     if actual_type == 'evaluate':
-        # Convert to postfix and evaluate
+        use_variables = False
+    
+    # Generate infix expression based on difficulty
+    if difficulty == 'easy':
+        infix_expr = generate_simple_infix(use_variables)
+    elif difficulty == 'medium':
+        infix_expr = generate_medium_infix(use_variables)
+    else:  # hard
+        infix_expr = generate_hard_infix(use_variables)
+    
+    if actual_type == 'evaluate':
+        # Convert to postfix and evaluate (must use numbers)
         postfix_expr = infix_to_postfix(infix_expr.replace(' ', ''))
         try:
             result = evaluate_postfix(postfix_expr)
         except:
-            # If evaluation fails, generate a simpler one
-            infix_expr = generate_simple_infix()
+            # If evaluation fails, generate a simpler one with numbers
+            if difficulty == 'easy':
+                infix_expr = generate_simple_infix(False)
+            elif difficulty == 'medium':
+                infix_expr = generate_medium_infix(False)
+            else:
+                infix_expr = generate_hard_infix(False)
             postfix_expr = infix_to_postfix(infix_expr.replace(' ', ''))
             result = evaluate_postfix(postfix_expr)
         
