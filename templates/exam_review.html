@@ -366,6 +366,21 @@
             <a href="/" class="text-blue-600 hover:text-blue-800 underline mt-2 inline-block">← Back to Home</a>
         </div>
 
+        <!-- Mode Selection -->
+        <div class="max-w-6xl mx-auto mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Choose a Mode</h2>
+                <div class="flex gap-4 justify-center mb-6">
+                    <button id="mode-free" onclick="setMode('free')" class="mode-btn px-6 py-3 rounded-lg border-2 border-blue-300 hover:border-blue-600 hover:bg-blue-50 transition-all font-semibold">
+                        <span class="text-lg">🆓</span> Free Build
+                    </button>
+                    <button id="mode-step" onclick="setMode('step')" class="mode-btn px-6 py-3 rounded-lg border-2 border-green-300 hover:border-green-600 hover:bg-green-50 transition-all font-semibold">
+                        <span class="text-lg">📝</span> Step-by-Step
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Topic Selection -->
         <div class="max-w-6xl mx-auto mb-8">
             <div class="bg-white rounded-xl shadow-lg p-6">
@@ -402,6 +417,25 @@
                 <div class="mb-6 pb-4 border-b-2 border-gray-200">
                     <h2 class="text-3xl font-bold text-gray-800 mb-3" id="question-title"></h2>
                     <p class="text-lg text-gray-700" id="question-text"></p>
+                </div>
+
+                <!-- Step-by-Step Progress (only shown in step-by-step mode) -->
+                <div id="step-progress-container" class="hidden mb-6 bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xl font-bold text-blue-800">Step-by-Step Progress</h3>
+                        <span id="stage-progress" class="text-sm font-semibold text-blue-600"></span>
+                    </div>
+                    <div id="current-stage-info" class="mb-3">
+                        <p class="text-lg font-semibold text-blue-900" id="current-stage-name"></p>
+                        <p class="text-gray-700" id="current-stage-desc"></p>
+                    </div>
+                    <div class="flex gap-2 mb-3" id="stage-indicators"></div>
+                    <button id="check-stage-btn" onclick="checkCurrentStage()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-all transform hover:scale-105">
+                        ✓ Check Stage
+                    </button>
+                    <button id="next-stage-btn" onclick="nextStage()" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all transform hover:scale-105 ml-2">
+                        ➡️ Next Stage
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -456,9 +490,44 @@
         let problemData = null;
         let placedBlocks = [];
         let draggedBlock = null;
+        let currentMode = 'free'; // 'free' or 'step'
+        let currentStage = 1;
+        let completedStages = [];
+        
+        // Initialize mode button styles
+        document.addEventListener('DOMContentLoaded', () => {
+            setMode('free');
+        });
+
+        function setMode(mode) {
+            currentMode = mode;
+            // Update button styles
+            document.getElementById('mode-free').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('mode-free').classList.add('border-blue-300', 'text-gray-800');
+            document.getElementById('mode-step').classList.remove('bg-green-600', 'text-white');
+            document.getElementById('mode-step').classList.add('border-green-300', 'text-gray-800');
+            
+            if (mode === 'free') {
+                document.getElementById('mode-free').classList.add('bg-blue-600', 'text-white');
+                document.getElementById('step-progress-container').classList.add('hidden');
+            } else {
+                document.getElementById('mode-step').classList.add('bg-green-600', 'text-white');
+                if (problemData && problemData.stages) {
+                    document.getElementById('step-progress-container').classList.remove('hidden');
+                    updateStageDisplay();
+                }
+            }
+            
+            // Reset if we have a problem loaded
+            if (problemData) {
+                displayProblem();
+            }
+        }
 
         async function selectTopic(topic) {
             currentTopic = topic;
+            currentStage = 1;
+            completedStages = [];
             
             try {
                 const response = await fetch('/api/get-scratch-problem', {
@@ -470,6 +539,14 @@
                 problemData = await response.json();
                 displayProblem();
                 document.getElementById('workspace-container').classList.remove('hidden');
+                
+                // Show step progress if in step-by-step mode
+                if (currentMode === 'step' && problemData.stages) {
+                    document.getElementById('step-progress-container').classList.remove('hidden');
+                    updateStageDisplay();
+                } else {
+                    document.getElementById('step-progress-container').classList.add('hidden');
+                }
             } catch (error) {
                 alert('Error loading problem: ' + error.message);
             }
@@ -484,7 +561,23 @@
             const palette = document.getElementById('block-palette');
             palette.innerHTML = '';
             
-            problemData.blocks.forEach(block => {
+            // Filter blocks based on mode and stage
+            let availableBlocks = problemData.blocks;
+            if (currentMode === 'step' && problemData.stages) {
+                // Only show blocks from current and completed stages
+                const stageIds = [];
+                completedStages.forEach(stageNum => {
+                    if (problemData.stages[stageNum]) {
+                        stageIds.push(...problemData.stages[stageNum].block_ids);
+                    }
+                });
+                if (problemData.stages[currentStage]) {
+                    stageIds.push(...problemData.stages[currentStage].block_ids);
+                }
+                availableBlocks = problemData.blocks.filter(b => stageIds.includes(b.id));
+            }
+            
+            availableBlocks.forEach(block => {
                 const blockEl = createBlockElement(block, false);
                 palette.appendChild(blockEl);
             });
@@ -493,6 +586,116 @@
             const workspace = document.getElementById('workspace');
             workspace.innerHTML = '';
             placedBlocks = [];
+            
+            // Update stage display if in step-by-step mode
+            if (currentMode === 'step' && problemData.stages) {
+                updateStageDisplay();
+            }
+        }
+        
+        function updateStageDisplay() {
+            if (!problemData.stages) return;
+            
+            const totalStages = Object.keys(problemData.stages).length;
+            const stage = problemData.stages[currentStage];
+            
+            if (stage) {
+                document.getElementById('current-stage-name').textContent = `Stage ${currentStage}: ${stage.name}`;
+                document.getElementById('current-stage-desc').textContent = stage.description;
+                document.getElementById('stage-progress').textContent = `Stage ${currentStage} of ${totalStages}`;
+            }
+            
+            // Update stage indicators
+            const indicatorsContainer = document.getElementById('stage-indicators');
+            indicatorsContainer.innerHTML = '';
+            
+            for (let i = 1; i <= totalStages; i++) {
+                const indicator = document.createElement('div');
+                indicator.className = `flex-1 h-3 rounded transition-all ${
+                    i < currentStage ? 'bg-green-500' :
+                    i === currentStage ? 'bg-blue-500' :
+                    completedStages.includes(i) ? 'bg-green-300' :
+                    'bg-gray-300'
+                }`;
+                indicator.title = problemData.stages[i]?.name || `Stage ${i}`;
+                indicatorsContainer.appendChild(indicator);
+            }
+            
+            // Show/hide next stage button
+            const nextBtn = document.getElementById('next-stage-btn');
+            if (completedStages.includes(currentStage) && currentStage < totalStages) {
+                nextBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.add('hidden');
+            }
+        }
+        
+        function checkCurrentStage() {
+            if (!problemData.stages || !problemData.stages[currentStage]) return;
+            
+            const stage = problemData.stages[currentStage];
+            const stageBlockIds = stage.block_ids;
+            const fullCorrectOrder = problemData.correct_order;
+            
+            // Get blocks for this stage in correct order
+            const stageCorrectOrder = stageBlockIds.filter(id => fullCorrectOrder.includes(id));
+            
+            // Get user's placed blocks for this stage
+            const userStageBlocks = placedBlocks
+                .filter(b => stageBlockIds.includes(b.id))
+                .map(b => b.id);
+            
+            // Check if all stage blocks are present and in correct order
+            const allPresent = stageBlockIds.every(id => userStageBlocks.includes(id));
+            const isOrderCorrect = JSON.stringify(userStageBlocks) === JSON.stringify(stageCorrectOrder);
+            
+            const feedback = document.getElementById('feedback');
+            feedback.classList.remove('hidden');
+            
+            if (allPresent && isOrderCorrect) {
+                feedback.className = 'bg-green-100 border-l-4 border-green-500 p-6 rounded-lg';
+                feedback.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">✅</span>
+                        <div>
+                            <p class="font-bold text-green-800 text-xl">Stage ${currentStage} Complete!</p>
+                            <p class="text-green-700 mt-1">${stage.name} is correct. You can proceed to the next stage.</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Mark stage as completed
+                if (!completedStages.includes(currentStage)) {
+                    completedStages.push(currentStage);
+                }
+                
+                updateStageDisplay();
+            } else {
+                feedback.className = 'bg-red-100 border-l-4 border-red-500 p-6 rounded-lg';
+                feedback.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">❌</span>
+                        <div>
+                            <p class="font-bold text-red-800 text-xl">Stage ${currentStage} Not Complete</p>
+                            <p class="text-red-700 mt-1">Please check the order and make sure all blocks for ${stage.name} are present.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function nextStage() {
+            if (!problemData.stages) return;
+            
+            const totalStages = Object.keys(problemData.stages).length;
+            
+            if (completedStages.includes(currentStage) && currentStage < totalStages) {
+                currentStage++;
+                displayProblem();
+                
+                const feedback = document.getElementById('feedback');
+                feedback.classList.add('hidden');
+            }
         }
 
         function createBlockElement(block, isPlaced) {
@@ -691,6 +894,13 @@
             workspace.innerHTML = '';
             placedBlocks = [];
             document.getElementById('feedback').classList.add('hidden');
+            
+            // Reset stages if in step-by-step mode
+            if (currentMode === 'step') {
+                currentStage = 1;
+                completedStages = [];
+            }
+            
             displayProblem();
         }
 
@@ -707,6 +917,14 @@
                     placedBlocks.push(blockData);
                 }
             });
+            
+            // Mark all stages as completed if in step-by-step mode
+            if (currentMode === 'step' && problemData.stages) {
+                const totalStages = Object.keys(problemData.stages).length;
+                completedStages = Array.from({length: totalStages}, (_, i) => i + 1);
+                currentStage = totalStages;
+                updateStageDisplay();
+            }
         }
 
         function getTopicName(topic) {

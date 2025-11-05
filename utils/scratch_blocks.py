@@ -348,12 +348,47 @@ def generate_stack_class_problem():
     shuffled = blocks.copy()
     random.shuffle(shuffled)
     
+    # Define stages for step-by-step mode
+    stages = {
+        1: {
+            'name': 'Class Definition',
+            'description': 'Start with the class definition',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 1]
+        },
+        2: {
+            'name': 'Private Members',
+            'description': 'Add private members: struct and pointer',
+            'groups': [2],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 2]
+        },
+        3: {
+            'name': 'Public Section & Constructor',
+            'description': 'Add public section and constructor',
+            'groups': [3, 4],
+            'block_ids': [b['id'] for b in blocks if b['group'] in [3, 4]]
+        },
+        4: {
+            'name': 'Public Methods',
+            'description': 'Add public methods: push, pop, and top',
+            'groups': [5, 6, 7],
+            'block_ids': [b['id'] for b in blocks if b['group'] in [5, 6, 7]]
+        },
+        5: {
+            'name': 'Closing Brace',
+            'description': 'Close the class definition',
+            'groups': [8],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 8]
+        }
+    }
+    
     return {
         'type': 'stack_class',
         'question': 'Build a Stack linked list class with the following methods: push, pop, and top. Use the provided code blocks to assemble the complete class definition.',
         'blocks': shuffled,
         'correct_order': correct_order,
         'groups': groups,
+        'stages': stages,
         'hint': 'Start with class definition, then private members (struct and pointer), then public methods (constructor, push, pop, top), and end with closing brace. Function bodies should be grouped with their function definitions.'
     }
 
@@ -756,12 +791,47 @@ def generate_queue_class_problem():
     shuffled = blocks.copy()
     random.shuffle(shuffled)
     
+    # Define stages for step-by-step mode
+    stages = {
+        1: {
+            'name': 'Class Definition',
+            'description': 'Start with the class definition',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 1]
+        },
+        2: {
+            'name': 'Private Members',
+            'description': 'Add private members: struct and pointers',
+            'groups': [2],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 2]
+        },
+        3: {
+            'name': 'Public Section & Constructor',
+            'description': 'Add public section and constructor',
+            'groups': [3, 4],
+            'block_ids': [b['id'] for b in blocks if b['group'] in [3, 4]]
+        },
+        4: {
+            'name': 'Public Methods',
+            'description': 'Add public methods: addQueue, deleteQueue, and front',
+            'groups': [5, 6, 7],
+            'block_ids': [b['id'] for b in blocks if b['group'] in [5, 6, 7]]
+        },
+        5: {
+            'name': 'Closing Brace',
+            'description': 'Close the class definition',
+            'groups': [8],
+            'block_ids': [b['id'] for b in blocks if b['group'] == 8]
+        }
+    }
+    
     return {
         'type': 'queue_class',
         'question': 'Build a Queue linked list class with the following methods: addQueue, deleteQueue, and front. Use the provided code blocks to assemble the complete class definition.',
         'blocks': shuffled,
         'correct_order': correct_order,
         'groups': groups,
+        'stages': stages,
         'hint': 'Start with class definition, then private members (struct and pointers), then public methods (constructor, addQueue, deleteQueue, front), and end with closing brace.'
     }
 
