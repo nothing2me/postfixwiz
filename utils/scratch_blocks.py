@@ -907,12 +907,41 @@ def generate_recursion_function_problem():
     shuffled = blocks.copy()
     random.shuffle(shuffled)
     
+    # Define stages for step-by-step mode
+    stages = {
+        1: {
+            'name': 'Function Definition',
+            'description': 'Start with the function definition',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] == 'r1']
+        },
+        2: {
+            'name': 'Base Case',
+            'description': 'Add base case: if n <= 0, return',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] in ['r2', 'r3', 'r2a']]
+        },
+        3: {
+            'name': 'Recursive Case',
+            'description': 'Print n and recursively call with n-3',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] in ['r4', 'r5']]
+        },
+        4: {
+            'name': 'Closing Brace',
+            'description': 'Close the function',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] == 'r1a']
+        }
+    }
+    
     return {
         'type': 'recursion',
         'question': 'Build a recursive function that prints: n, n-3, n-6, n-9... until n <= 0. Use the provided code blocks to assemble the function.',
         'blocks': shuffled,
         'correct_order': correct_order,
         'groups': {1: blocks},
+        'stages': stages,
         'hint': 'Start with function definition, then base case (if n <= 0 return), then print n, then recursive call with n-3, and close with brace.'
     }
 
@@ -1042,12 +1071,47 @@ def generate_binary_search_problem():
     shuffled = blocks.copy()
     random.shuffle(shuffled)
     
+    # Define stages for step-by-step mode
+    stages = {
+        1: {
+            'name': 'Function Definition',
+            'description': 'Start with the function definition',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] == 'bs1']
+        },
+        2: {
+            'name': 'Base Case',
+            'description': 'Add base case: if left > right, return -1',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] in ['bs2', 'bs3', 'bs2a']]
+        },
+        3: {
+            'name': 'Calculate Midpoint',
+            'description': 'Calculate the middle index',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] == 'bs4']
+        },
+        4: {
+            'name': 'Check Midpoint',
+            'description': 'Check if found, then search left or right half',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] in ['bs5', 'bs6', 'bs5a', 'bs7', 'bs8', 'bs7a', 'bs9']]
+        },
+        5: {
+            'name': 'Closing Brace',
+            'description': 'Close the function',
+            'groups': [1],
+            'block_ids': [b['id'] for b in blocks if b['id'] == 'bs1a']
+        }
+    }
+    
     return {
         'type': 'binary_search',
         'question': 'Build a recursive binary search function that finds target in sorted array. Use the provided code blocks to assemble the function.',
         'blocks': shuffled,
         'correct_order': correct_order,
         'groups': {1: blocks},
+        'stages': stages,
         'hint': 'Start with function definition, then base case (if left > right return -1), calculate mid, check if found, then recursively search left or right half.'
     }
 

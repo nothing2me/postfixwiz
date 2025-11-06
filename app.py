@@ -5,6 +5,7 @@ from utils.postfix import evaluate_postfix, is_valid_postfix
 from utils.infix_to_postfix import infix_to_postfix, get_conversion_steps
 from utils.problems import generate_problem, ProblemType
 from utils.scratch_blocks import generate_scratch_problem
+from utils.pseudo_code import generate_written_code_problem
 from utils.big_o import generate_big_o_problem
 
 app = Flask(__name__)
@@ -270,17 +271,61 @@ def api_check_typing_code():
 
 def normalize_code(code):
     """Normalize code for comparison by removing extra whitespace and normalizing"""
-    # Remove all whitespace
-    code = ''.join(code.split())
-    # Normalize case
+    # Remove trailing/leading whitespace from each line, then normalize line breaks
+    lines = [line.strip() for line in code.split('\n') if line.strip()]
+    code = '\n'.join(lines)
+    # Normalize case (but keep structure)
     code = code.lower()
-    # Remove common formatting differences
-    code = code.replace(';', '')
-    code = code.replace('{', '')
-    code = code.replace('}', '')
-    code = code.replace('(', '')
-    code = code.replace(')', '')
-    return code
+    # Remove extra whitespace but keep structure
+    import re
+    code = re.sub(r'\s+', ' ', code)  # Replace multiple spaces with single space
+    return code.strip()
+
+@app.route('/api/get-written-code-problem', methods=['POST'])
+def api_get_written_code_problem():
+    """Get written code problem with stages and pseudo code"""
+    data = request.json
+    topic = data.get('topic', 'stack')
+    
+    problem = generate_written_code_problem(topic)
+    return jsonify(problem)
+
+@app.route('/api/check-written-code-stage', methods=['POST'])
+def api_check_written_code_stage():
+    """Check written code for a specific stage"""
+    data = request.json
+    user_code = data.get('user_code', '').strip()
+    correct_code = data.get('correct_code', '').strip()
+    stage_num = data.get('stage_num', 1)
+    
+    # Normalize code for comparison
+    user_normalized = normalize_code(user_code)
+    correct_normalized = normalize_code(correct_code)
+    
+    # Check if code matches
+    is_correct = user_normalized == correct_normalized
+    
+    # Update session stats
+    if 'stats' not in session:
+        session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+    
+    session['stats']['total'] += 1
+    if is_correct:
+        session['stats']['correct'] += 1
+        session['stats']['streak'] += 1
+        if session['stats']['streak'] > session['stats']['max_streak']:
+            session['stats']['max_streak'] = session['stats']['streak']
+    else:
+        session['stats']['streak'] = 0
+    
+    session.modified = True
+    
+    return jsonify({
+        'correct': is_correct,
+        'message': f'Stage {stage_num} code is correct!' if is_correct else f'Stage {stage_num} code needs revision. Check syntax and logic.',
+        'correct_code': correct_code,
+        'stats': session['stats']
+    })
 
 @app.route('/api/generate-big-o-problem', methods=['POST'])
 def api_generate_big_o_problem():
