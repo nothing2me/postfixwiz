@@ -291,46 +291,103 @@ def api_generate_big_o_problem():
     problem = generate_big_o_problem(difficulty, problem_type)
     return jsonify(problem)
 
+def normalize_big_o_answer(answer):
+    """Normalize Big-O notation answer for comparison"""
+    if not answer:
+        return ''
+    
+    # Convert to lowercase and remove all whitespace
+    normalized = answer.lower().replace(' ', '').replace('\t', '').replace('\n', '')
+    
+    # Remove O() wrapper if present but keep content
+    if normalized.startswith('o(') and normalized.endswith(')'):
+        normalized = normalized[2:-1]
+    elif normalized.startswith('o'):
+        normalized = normalized[1:]
+        if normalized.startswith('(') and normalized.endswith(')'):
+            normalized = normalized[1:-1]
+    
+    # Handle common variations
+    # n^2, n2, n*n, n squared -> n²
+    normalized = normalized.replace('n^2', 'n²').replace('n2', 'n²')
+    normalized = normalized.replace('n*n', 'n²').replace('nsquared', 'n²')
+    normalized = normalized.replace('n²²', 'n²')  # Fix double superscript
+    
+    # n^3, n3, n*n*n, n cubed -> n³
+    normalized = normalized.replace('n^3', 'n³').replace('n3', 'n³')
+    normalized = normalized.replace('n*n*n', 'n³').replace('ncubed', 'n³')
+    normalized = normalized.replace('n³³', 'n³')  # Fix double superscript
+    
+    # Handle log variations
+    normalized = normalized.replace('log(n)', 'logn').replace('log2(n)', 'logn')
+    normalized = normalized.replace('log2n', 'logn').replace('log_2(n)', 'logn')
+    
+    # Handle special characters
+    normalized = normalized.replace('²', '²').replace('³', '³')
+    
+    return normalized
+
 @app.route('/api/check-big-o-answer', methods=['POST'])
 def api_check_big_o_answer():
     """Check if user's Big-O answer is correct"""
-    data = request.json
-    problem_type = data.get('problem_type')
-    user_answer = data.get('answer', '').strip()
-    correct_answer = data.get('correct_answer', '').strip()
-    
-    # Normalize answers for comparison (case-insensitive, remove spaces)
-    user_normalized = user_answer.replace(' ', '').lower()
-    correct_normalized = correct_answer.replace(' ', '').lower()
-    
-    # Handle variations like O(n^2) vs O(n²)
-    user_normalized = user_normalized.replace('n^2', 'n²').replace('n2', 'n²')
-    user_normalized = user_normalized.replace('n^3', 'n³').replace('n3', 'n³')
-    correct_normalized = correct_normalized.replace('n^2', 'n²').replace('n2', 'n²')
-    correct_normalized = correct_normalized.replace('n^3', 'n³').replace('n3', 'n³')
-    
-    is_correct = user_normalized == correct_normalized
-    
-    # Update session stats
-    if 'stats' not in session:
-        session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
-    
-    session['stats']['total'] += 1
-    if is_correct:
-        session['stats']['correct'] += 1
-        session['stats']['streak'] += 1
-        if session['stats']['streak'] > session['stats']['max_streak']:
-            session['stats']['max_streak'] = session['stats']['streak']
-    else:
-        session['stats']['streak'] = 0
-    
-    session.modified = True
-    
-    return jsonify({
-        'correct': is_correct,
-        'correct_answer': correct_answer,
-        'stats': session['stats']
-    })
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'correct': False, 'error': 'No data provided', 'correct_answer': 'N/A'})
+        
+        problem_type = data.get('problem_type')
+        user_answer = data.get('answer', '').strip() if data.get('answer') else ''
+        correct_answer = data.get('correct_answer', '').strip() if data.get('correct_answer') else ''
+        
+        # Validate inputs
+        if not user_answer:
+            return jsonify({
+                'correct': False,
+                'error': 'Please provide an answer',
+                'correct_answer': correct_answer if correct_answer else 'N/A'
+            })
+        
+        if not correct_answer:
+            return jsonify({
+                'correct': False,
+                'error': 'Problem data incomplete',
+                'correct_answer': 'N/A'
+            })
+        
+        # Normalize answers for comparison
+        user_normalized = normalize_big_o_answer(user_answer)
+        correct_normalized = normalize_big_o_answer(correct_answer)
+        
+        # Compare normalized answers
+        is_correct = user_normalized == correct_normalized
+        
+        # Update session stats
+        if 'stats' not in session:
+            session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+        
+        session['stats']['total'] += 1
+        if is_correct:
+            session['stats']['correct'] += 1
+            session['stats']['streak'] += 1
+            if session['stats']['streak'] > session['stats']['max_streak']:
+                session['stats']['max_streak'] = session['stats']['streak']
+        else:
+            session['stats']['streak'] = 0
+        
+        session.modified = True
+        
+        return jsonify({
+            'correct': is_correct,
+            'correct_answer': correct_answer,
+            'stats': session['stats']
+        })
+    except Exception as e:
+        # Handle any unexpected errors
+        return jsonify({
+            'correct': False,
+            'error': f'Error checking answer: {str(e)}',
+            'correct_answer': data.get('correct_answer', 'N/A') if 'data' in locals() else 'N/A'
+        })
 
 # Export the app for Vercel
 # Vercel's Python runtime will automatically detect the 'app' variable
