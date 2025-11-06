@@ -637,12 +637,20 @@
             const stageBlockIds = stage.block_ids;
             const fullCorrectOrder = problemData.correct_order;
             
-            // Get blocks for this stage in correct order
-            const stageCorrectOrder = stageBlockIds.filter(id => fullCorrectOrder.includes(id));
+            // Get blocks for this stage in correct order (based on their order in fullCorrectOrder)
+            // This preserves the order from fullCorrectOrder, not from stageBlockIds
+            const stageCorrectOrder = fullCorrectOrder.filter(id => stageBlockIds.includes(id));
             
-            // Get user's placed blocks for this stage
+            // Get user's placed blocks for this stage in the order they appear in workspace
+            // But we need to check their order relative to fullCorrectOrder
             const userStageBlocks = placedBlocks
                 .filter(b => stageBlockIds.includes(b.id))
+                // Sort by their position in fullCorrectOrder to get correct order
+                .sort((a, b) => {
+                    const aIndex = fullCorrectOrder.indexOf(a.id);
+                    const bIndex = fullCorrectOrder.indexOf(b.id);
+                    return aIndex - bIndex;
+                })
                 .map(b => b.id);
             
             // Check if all stage blocks are present and in correct order
