@@ -519,9 +519,9 @@
                     <div class="lg:col-span-1">
                         <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                             <span class="mr-2">📋</span>
-                            Pseudo Code
+                            Pseudo Code (All Stages)
                         </h3>
-                        <div id="pseudo-code-display" class="bg-gray-50 rounded-lg p-6 border-2 border-gray-200 min-h-[400px]">
+                        <div id="pseudo-code-display" class="bg-gray-50 rounded-lg p-6 border-2 border-gray-200 min-h-[400px] max-h-[600px] overflow-y-auto">
                             <pre class="whitespace-pre-wrap font-mono text-sm text-gray-800" id="pseudo-code-text"></pre>
                         </div>
                     </div>
@@ -1075,19 +1075,42 @@
                 document.getElementById('written-current-stage-desc').textContent = stage.description;
                 document.getElementById('written-stage-progress').textContent = `Stage ${currentStage} of ${totalStages}`;
                 
-                // Display pseudo code for current stage
-                if (stage.pseudo_code) {
-                    document.getElementById('pseudo-code-text').textContent = stage.pseudo_code;
-                } else {
-                    document.getElementById('pseudo-code-text').textContent = `Stage ${currentStage}: ${stage.description}`;
+                // Display pseudo code for all previous stages + current stage (stacked for context)
+                let pseudoCodeDisplay = '';
+                for (let i = 1; i <= currentStage; i++) {
+                    const stageData = problemData.stages[i];
+                    if (stageData) {
+                        if (i < currentStage) {
+                            // Completed stages - show with checkmark
+                            pseudoCodeDisplay += `\n✅ Stage ${i}: ${stageData.name} (Completed)\n`;
+                        } else {
+                            // Current stage - show with highlight
+                            pseudoCodeDisplay += `\n📝 Stage ${i}: ${stageData.name} (Current)\n`;
+                        }
+                        
+                        if (stageData.pseudo_code) {
+                            pseudoCodeDisplay += stageData.pseudo_code;
+                        } else {
+                            pseudoCodeDisplay += stageData.description;
+                        }
+                        
+                        if (i < currentStage) {
+                            pseudoCodeDisplay += '\n';
+                        }
+                    }
                 }
+                document.getElementById('pseudo-code-text').textContent = pseudoCodeDisplay.trim();
                 
-                // Load saved code for this stage if exists
-                if (writtenCodeStages[currentStage]) {
-                    document.getElementById('code-editor').value = writtenCodeStages[currentStage];
-                } else {
+                // Don't clear code editor - keep existing content if user has written something
+                // Only load saved code if it exists and editor is empty
+                if (!writtenCodeStages[currentStage] && document.getElementById('code-editor').value.trim() === '') {
+                    // Editor is empty, keep it empty
                     document.getElementById('code-editor').value = '';
+                } else if (writtenCodeStages[currentStage]) {
+                    // Load saved code if it exists
+                    document.getElementById('code-editor').value = writtenCodeStages[currentStage];
                 }
+                // Otherwise, keep the current editor content (don't clear it)
             }
             
             // Update stage indicators
@@ -1126,7 +1149,7 @@
                 return;
             }
             
-            // Save user's code
+            // Save user's code (always save, even if not complete)
             writtenCodeStages[currentStage] = userCode;
             
             try {
@@ -1190,8 +1213,24 @@
             const totalStages = Object.keys(problemData.stages).length;
             
             if (completedStages.includes(currentStage) && currentStage < totalStages) {
+                // Save current stage's code before moving to next stage
+                const currentCode = document.getElementById('code-editor').value.trim();
+                if (currentCode) {
+                    writtenCodeStages[currentStage] = currentCode;
+                }
+                
                 currentStage++;
                 updateWrittenStageDisplay();
+                
+                // Transfer code from previous stage if current stage is empty
+                // This allows users to build upon previous stages
+                const prevStageCode = writtenCodeStages[currentStage - 1];
+                const currentStageCode = writtenCodeStages[currentStage];
+                if (!currentStageCode && prevStageCode && document.getElementById('code-editor').value.trim() === '') {
+                    // Start with previous stage's code so user can build upon it
+                    document.getElementById('code-editor').value = prevStageCode;
+                    writtenCodeStages[currentStage] = prevStageCode;
+                }
                 
                 const feedback = document.getElementById('written-feedback');
                 feedback.classList.add('hidden');
