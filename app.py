@@ -270,16 +270,15 @@ def api_check_typing_code():
     })
 
 def normalize_code(code):
-    """Normalize code for comparison by removing extra whitespace and normalizing"""
-    # Remove trailing/leading whitespace from each line, then normalize line breaks
+    """Normalize code for comparison by removing leading/trailing whitespace from lines,
+    removing empty lines, and normalizing case, while preserving structural characters."""
+    # Split into lines, strip each line, and filter out empty lines
     lines = [line.strip() for line in code.split('\n') if line.strip()]
+    # Join lines back with a single newline
     code = '\n'.join(lines)
-    # Normalize case (but keep structure)
+    # Normalize case (preserves all structural characters like ; {} () etc.)
     code = code.lower()
-    # Remove extra whitespace but keep structure
-    import re
-    code = re.sub(r'\s+', ' ', code)  # Replace multiple spaces with single space
-    return code.strip()
+    return code
 
 @app.route('/api/get-written-code-problem', methods=['POST'])
 def api_get_written_code_problem():
