@@ -7,6 +7,7 @@ from utils.problems import generate_problem, ProblemType
 from utils.scratch_blocks import generate_scratch_problem
 from utils.pseudo_code import generate_written_code_problem
 from utils.big_o import generate_big_o_problem
+from utils.exam_review import generate_exam_problem
 
 app = Flask(__name__)
 app.secret_key = 'postfix_trainer_secret_key_2024'
