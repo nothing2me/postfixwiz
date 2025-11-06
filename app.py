@@ -5,6 +5,7 @@ from utils.postfix import evaluate_postfix, is_valid_postfix
 from utils.infix_to_postfix import infix_to_postfix, get_conversion_steps
 from utils.problems import generate_problem, ProblemType
 from utils.scratch_blocks import generate_scratch_problem
+from utils.big_o import generate_big_o_problem
 
 app = Flask(__name__)
 app.secret_key = 'postfix_trainer_secret_key_2024'
@@ -34,6 +35,11 @@ def exam_review():
     """Exam review mode - topic-specific study games"""
     return render_template('exam_review.html')
 
+@app.route('/big-o')
+def big_o():
+    """Big-O notation practice mode"""
+    return render_template('big_o.html')
+
 # API Routes
 @app.route('/api/generate-problem', methods=['POST'])
 def api_generate_problem():
@@ -56,9 +62,22 @@ def api_check_answer():
     original_expression = data.get('original_expression')
     
     if problem_type == 'evaluate':
+        # Calculate correct answer first, even if user answer is invalid
+        correct_result = None
+        try:
+            correct_result = evaluate_postfix(original_expression)
+        except Exception as e:
+            # If evaluation fails, try to use the correct_answer from the problem
+            if correct_answer is not None:
+                try:
+                    correct_result = float(correct_answer)
+                except:
+                    correct_result = correct_answer if correct_answer is not None else "N/A"
+            else:
+                correct_result = "N/A"
+        
         try:
             user_result = float(user_answer)
-            correct_result = evaluate_postfix(original_expression)
             is_correct = abs(user_result - correct_result) < 0.0001
             
             # Update session stats
@@ -81,14 +100,27 @@ def api_check_answer():
                 'correct_answer': correct_result,
                 'stats': session['stats']
             })
-        except:
-            return jsonify({'correct': False, 'error': 'Invalid answer format'})
+        except Exception as e:
+            # User answer is invalid, but still return the correct answer
+            if 'stats' not in session:
+                session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+            
+            session['stats']['total'] += 1
+            session['stats']['streak'] = 0
+            session.modified = True
+            
+            return jsonify({
+                'correct': False,
+                'correct_answer': correct_result,
+                'error': 'Invalid answer format',
+                'stats': session['stats']
+            })
     
     elif problem_type == 'convert':
         try:
             # Clean and normalize answers
             user_postfix = user_answer.replace(' ', '').upper()
-            correct_postfix = correct_answer.replace(' ', '').upper()
+            correct_postfix = correct_answer.replace(' ', '').upper() if correct_answer else ''
             
             is_correct = user_postfix == correct_postfix
             
@@ -109,13 +141,30 @@ def api_check_answer():
             
             return jsonify({
                 'correct': is_correct,
-                'correct_answer': correct_answer,
+                'correct_answer': correct_answer if correct_answer else 'N/A',
                 'stats': session['stats']
             })
-        except:
-            return jsonify({'correct': False, 'error': 'Invalid answer format'})
+        except Exception as e:
+            # Ensure we always return correct_answer
+            if 'stats' not in session:
+                session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+            
+            session['stats']['total'] += 1
+            session['stats']['streak'] = 0
+            session.modified = True
+            
+            return jsonify({
+                'correct': False,
+                'correct_answer': correct_answer if correct_answer else 'N/A',
+                'error': 'Invalid answer format',
+                'stats': session['stats']
+            })
     
-    return jsonify({'correct': False, 'error': 'Unknown problem type'})
+    return jsonify({
+        'correct': False,
+        'correct_answer': correct_answer if correct_answer else 'N/A',
+        'error': 'Unknown problem type'
+    })
 
 @app.route('/api/get-stats', methods=['GET'])
 def api_get_stats():
@@ -232,6 +281,57 @@ def normalize_code(code):
     code = code.replace('(', '')
     code = code.replace(')', '')
     return code
+
+@app.route('/api/generate-big-o-problem', methods=['POST'])
+def api_generate_big_o_problem():
+    """Generate a Big-O practice problem"""
+    data = request.json
+    difficulty = data.get('difficulty', 'easy')
+    problem_type = data.get('type', 'both')
+    
+    problem = generate_big_o_problem(difficulty, problem_type)
+    return jsonify(problem)
+
+@app.route('/api/check-big-o-answer', methods=['POST'])
+def api_check_big_o_answer():
+    """Check if user's Big-O answer is correct"""
+    data = request.json
+    problem_type = data.get('problem_type')
+    user_answer = data.get('answer', '').strip()
+    correct_answer = data.get('correct_answer', '').strip()
+    
+    # Normalize answers for comparison (case-insensitive, remove spaces)
+    user_normalized = user_answer.replace(' ', '').lower()
+    correct_normalized = correct_answer.replace(' ', '').lower()
+    
+    # Handle variations like O(n^2) vs O(n²)
+    user_normalized = user_normalized.replace('n^2', 'n²').replace('n2', 'n²')
+    user_normalized = user_normalized.replace('n^3', 'n³').replace('n3', 'n³')
+    correct_normalized = correct_normalized.replace('n^2', 'n²').replace('n2', 'n²')
+    correct_normalized = correct_normalized.replace('n^3', 'n³').replace('n3', 'n³')
+    
+    is_correct = user_normalized == correct_normalized
+    
+    # Update session stats
+    if 'stats' not in session:
+        session['stats'] = {'correct': 0, 'total': 0, 'streak': 0, 'max_streak': 0}
+    
+    session['stats']['total'] += 1
+    if is_correct:
+        session['stats']['correct'] += 1
+        session['stats']['streak'] += 1
+        if session['stats']['streak'] > session['stats']['max_streak']:
+            session['stats']['max_streak'] = session['stats']['streak']
+    else:
+        session['stats']['streak'] = 0
+    
+    session.modified = True
+    
+    return jsonify({
+        'correct': is_correct,
+        'correct_answer': correct_answer,
+        'stats': session['stats']
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
